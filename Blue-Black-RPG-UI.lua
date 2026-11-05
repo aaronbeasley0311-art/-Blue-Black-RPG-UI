@@ -1,11 +1,13 @@
 
 --==================================================
 -- BLUE & BLACK RPG COMMAND UI
--- ANIMATED EDITION
+-- ANIMATED + FULLY SCALABLE EDITION
+-- MOBILE | TABLET | PC
 --==================================================
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -20,17 +22,54 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BlueRPG_UI"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
 
 -- Main Panel
 local Main = Instance.new("Frame")
 Main.Name = "MainPanel"
-Main.Size = UDim2.new(0, 420, 0, 290)
-Main.Position = UDim2.new(0.5, -210, 0.5, -145)
+Main.Size = UDim2.fromOffset(420, 290)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.Position = UDim2.fromScale(0.5, 0.5)
 Main.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 
+-- SCALING SYSTEM
+local Scale = Instance.new("UIScale")
+Scale.Scale = 1
+Scale.Parent = Main
+
+local function UpdateScale()
+    local Camera = workspace.CurrentCamera
+    if not Camera then return end
+
+    local Viewport = Camera.ViewportSize
+
+    local WidthScale = (Viewport.X - 32) / 420
+    local HeightScale = (Viewport.Y - 32) / 290
+
+    Scale.Scale = math.clamp(
+        math.min(WidthScale, HeightScale),
+        0.45,
+        1.15
+    )
+end
+
+local function ConnectCamera(Camera)
+    if not Camera then return end
+
+    Camera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateScale)
+    UpdateScale()
+end
+
+ConnectCamera(workspace.CurrentCamera)
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    ConnectCamera(workspace.CurrentCamera)
+end)
+
+-- Main Corner
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 8)
 MainCorner.Parent = Main
@@ -56,6 +95,7 @@ task.spawn(function()
             TweenInfo.new(2, Enum.EasingStyle.Linear),
             {Rotation = 360}
         )
+
         Tween:Play()
         Tween.Completed:Wait()
         Gradient.Rotation = 0
@@ -65,7 +105,7 @@ end)
 -- Inner Panel
 local Inner = Instance.new("Frame")
 Inner.Size = UDim2.new(1, -12, 1, -12)
-Inner.Position = UDim2.new(0, 6, 0, 6)
+Inner.Position = UDim2.fromOffset(6, 6)
 Inner.BackgroundColor3 = Color3.fromRGB(12, 15, 23)
 Inner.BorderSizePixel = 0
 Inner.Parent = Main
@@ -86,7 +126,7 @@ Title.Parent = Inner
 
 -- Center Diamond
 local Diamond = Instance.new("Frame")
-Diamond.Size = UDim2.new(0, 9, 0, 9)
+Diamond.Size = UDim2.fromOffset(9, 9)
 Diamond.Position = UDim2.new(0.5, -4, 0, 43)
 Diamond.Rotation = 45
 Diamond.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
@@ -96,19 +136,20 @@ Diamond.Parent = Inner
 -- Tabs
 local TabHolder = Instance.new("Frame")
 TabHolder.Size = UDim2.new(1, -24, 0, 38)
-TabHolder.Position = UDim2.new(0, 12, 0, 65)
+TabHolder.Position = UDim2.fromOffset(12, 65)
 TabHolder.BackgroundTransparency = 1
 TabHolder.Parent = Inner
 
 local TabLayout = Instance.new("UIListLayout")
 TabLayout.FillDirection = Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 TabLayout.Padding = UDim.new(0, 8)
 TabLayout.Parent = TabHolder
 
 local Content = Instance.new("Frame")
 Content.Size = UDim2.new(1, -28, 1, -125)
-Content.Position = UDim2.new(0, 14, 0, 112)
+Content.Position = UDim2.fromOffset(14, 112)
 Content.BackgroundColor3 = Color3.fromRGB(8, 11, 18)
 Content.BorderSizePixel = 0
 Content.Parent = Inner
@@ -117,18 +158,19 @@ local ContentCorner = Instance.new("UICorner")
 ContentCorner.CornerRadius = UDim.new(0, 5)
 ContentCorner.Parent = Content
 
+-- Pages
 local Pages = {}
 
 local function CreatePage(Name)
     local Page = Instance.new("Frame")
     Page.Name = Name
-    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.Size = UDim2.fromScale(1, 1)
     Page.BackgroundTransparency = 1
     Page.Visible = false
     Page.Parent = Content
 
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 1, 0)
+    Label.Size = UDim2.fromScale(1, 1)
     Label.BackgroundTransparency = 1
     Label.Text = Name .. " CONTENT"
     Label.TextColor3 = Color3.fromRGB(170, 190, 210)
@@ -143,6 +185,7 @@ CreatePage("TAB 1")
 CreatePage("TAB 2")
 CreatePage("TAB 3")
 
+-- Tab Creation
 local function CreateTab(Name)
     local Button = Instance.new("TextButton")
     Button.Name = Name
@@ -164,7 +207,7 @@ local function CreateTab(Name)
     Stroke.Thickness = 1
     Stroke.Parent = Button
 
-    Button.MouseButton1Click:Connect(function()
+    Button.Activated:Connect(function()
         for TabName, Page in pairs(Pages) do
             Page.Visible = TabName == Name
         end
@@ -194,9 +237,7 @@ if FirstTab then
     FirstTab.BackgroundColor3 = Color3.fromRGB(0, 65, 125)
 end
 
--- Dragging
-local UserInputService = game:GetService("UserInputService")
-
+-- DRAGGING SYSTEM
 local Dragging = false
 local DragStart
 local StartPosition
@@ -204,6 +245,7 @@ local StartPosition
 Main.InputBegan:Connect(function(Input)
     if Input.UserInputType == Enum.UserInputType.MouseButton1
     or Input.UserInputType == Enum.UserInputType.Touch then
+
         Dragging = true
         DragStart = Input.Position
         StartPosition = Main.Position
@@ -215,6 +257,7 @@ UserInputService.InputChanged:Connect(function(Input)
         Input.UserInputType == Enum.UserInputType.MouseMovement
         or Input.UserInputType == Enum.UserInputType.Touch
     ) then
+
         local Delta = Input.Position - DragStart
 
         Main.Position = UDim2.new(
@@ -229,8 +272,9 @@ end)
 UserInputService.InputEnded:Connect(function(Input)
     if Input.UserInputType == Enum.UserInputType.MouseButton1
     or Input.UserInputType == Enum.UserInputType.Touch then
+
         Dragging = false
     end
 end)
 
-print("BLUE & BLACK RPG COMMAND UI LOADED")
+print("BLUE & BLACK RPG COMMAND UI - SCALABLE EDITION LOADED")
